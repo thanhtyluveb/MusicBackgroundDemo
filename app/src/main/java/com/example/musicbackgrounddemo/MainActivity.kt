@@ -1,41 +1,40 @@
 package com.example.musicbackgrounddemo
 
-import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
-import android.view.View
 import android.content.Intent
 import android.os.Build
+import android.os.Bundle
+import android.view.View
 import android.view.animation.Animation
 import android.view.animation.LinearInterpolator
 import android.view.animation.RotateAnimation
-import androidx.lifecycle.ViewModelProviders
+import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.notif_music_control.*
 
 
 class MainActivity : AppCompatActivity(), View.OnClickListener {
-    private var intentBroadcast: Intent? = null
+
+    private var _intentMusicService: Intent? = null
     private var _musicAdapter: AdapterMusic = AdapterMusic(this)
-    private lateinit var _musicViewModel: MusicViewModel
+    private var _isPlaying = false
     private var listSongs: ArrayList<SongModel> = ArrayList()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        _musicViewModel = ViewModelProviders.of(this).get(MusicViewModel::class.java)
-
-        _musicViewModel._isPlaying.value = false
         btnPlay.setOnClickListener(this)
         btnNext.setOnClickListener(this)
         btnPrevious.setOnClickListener(this)
-        intentBroadcast = Intent(this, MusicBroadCastReceiver::class.java)
-        intentBroadcast?.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        btnStop.setOnClickListener(this)
+        _intentMusicService = Intent(this, MusicService::class.java)
+        initRecycleView()
         initMusicService()
-
-
         imgSong.animation = animationImgSong
         animationImgSong.start()
-        initRecycleView()
+    }
+
+    private fun initView(isPlaying: Boolean) {
+        btnPlay.setImageResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play)
     }
 
     private val animationImgSong: Animation
@@ -83,30 +82,44 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     }
 
     private fun initMusicService() {
+        _intentMusicService?.putParcelableArrayListExtra(LIST_SONGS_EXTRA, listSongs)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(
-                Intent(
-                    this,
-                    MusicService::class.java
-                ).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            )
+            startForegroundService(_intentMusicService)
+        } else {
+            startService(_intentMusicService)
         }
     }
 
     override fun onClick(view: View) {
         when (view) {
             btnPlay -> {
-                intentBroadcast?.putExtra(SONG_NAME_EXTRA, listSongs[0].songLocalUri)
-                intentBroadcast?.action = ACTION_PLAY
+                _isPlaying = true
+                _intentMusicService?.action = ACTION_PLAY_OR_PAUSE
             }
             btnNext -> {
-                intentBroadcast?.action = ACTION_NEXT
+                    _intentMusicService?.action = ACTION_NEXT
             }
             btnPrevious -> {
-                intentBroadcast?.action = ACTION_PREVIOUS
+                    _intentMusicService?.action = ACTION_PREVIOUS
+            }
+            btnStop -> {
+                _isPlaying = false
+                _intentMusicService?.action = ACTION_STOP
             }
         }
-        sendBroadcast(intentBroadcast)
+        initMusicService()
+    }
+
+    override fun onDestroy() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!_isPlaying) {
+                stopService(Intent(this, MusicService::class.java))
+            }
+        } else {
+            stopService(Intent(this, MusicService::class.java))
+        }
+
+        super.onDestroy()
     }
 }
 

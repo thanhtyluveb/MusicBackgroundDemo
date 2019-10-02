@@ -1,37 +1,35 @@
 package com.example.musicbackgrounddemo
 
-import android.app.*
-import android.content.Intent
-import android.os.IBinder
-import android.media.MediaPlayer
-import androidx.core.app.NotificationCompat
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
-import android.media.AudioManager
+import android.content.Intent
+import android.media.MediaPlayer
 import android.os.Build
+import android.os.IBinder
 import android.widget.RemoteViews
-import androidx.lifecycle.ViewModelProviders
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat.startForegroundService
 
 
 open class MusicService : Service() {
+    private var percentSongLengh = 0
+    var currentIndexSong = 0
+    private var _listSongResult: ArrayList<SongModel> = ArrayList()
+    private var _Player: MediaPlayer? = MediaPlayer()
+    private val CHANNEL_ID = "ForegroundServiceChannel"
 
-    override fun onBind(p0: Intent?): IBinder? {
-        return null
-    }
-
-    val CHANNEL_ID = "ForegroundServiceChannel"
-
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-
+    override fun onCreate() {
         createNotificationChannel()
-
         val notificationLayout = RemoteViews(packageName, R.layout.notif_music_control)
-
         val notificationIntent = Intent(this, MainActivity::class.java)
         notificationIntent.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
         val pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0)
 
-        setOnclickPendingIntent(this, ACTION_PLAY, notificationLayout, R.id.btnPlay)
+        setOnclickPendingIntent(this, ACTION_PLAY_OR_PAUSE, notificationLayout, R.id.btnPlay)
         setOnclickPendingIntent(this, ACTION_PREVIOUS, notificationLayout, R.id.btnPrevious)
         setOnclickPendingIntent(this, ACTION_NEXT, notificationLayout, R.id.btnNext)
         setOnclickPendingIntent(this, ACTION_STOP, notificationLayout, R.id.btnStop)
@@ -45,7 +43,83 @@ open class MusicService : Service() {
             .setAutoCancel(true)
             .build()
         startForeground(1, notification)
+
+        _Player?.setOnCompletionListener {
+            nextSong()
+        }
+        super.onCreate()
+    }
+
+    override fun onLowMemory() {
+        stopSelf()
+        super.onLowMemory()
+    }
+
+    override fun onBind(p0: Intent?): IBinder? {
+        return null
+    }
+
+    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+        _listSongResult = intent.getParcelableArrayListExtra(LIST_SONGS_EXTRA) ?: _listSongResult
+        currentIndexSong = intent.getIntExtra(SONG_INDEX_EXTRA, currentIndexSong)
+        checkActionIntent(intent)
         return START_STICKY
+    }
+
+    private fun checkActionIntent(intent: Intent) {
+        when (intent.action) {
+            ACTION_PLAY_OR_PAUSE -> playOrPause(intent)
+            ACTION_NEXT -> nextSong()
+            ACTION_PREVIOUS -> previousSong()
+            ACTION_STOP -> {
+                stopMusic()
+                stopSelf()
+            }
+            ACTION_NEW_PLAY -> playNewSong()
+        }
+    }
+
+    private fun playNewSong() {
+        playSongWithIndex(currentIndexSong)
+    }
+
+    private fun playOrPause(intent: Intent) {
+        _Player?.let { media ->
+            if (media.isPlaying) {
+                media.pause()
+                percentSongLengh = media.currentPosition
+            } else {
+                intent?.let {
+                    media.seekTo(percentSongLengh)
+                    media.start()
+                }
+            }
+        }
+    }
+
+    private fun nextSong() {
+        var index = currentIndexSong
+        playSongWithIndex(++index)
+    }
+
+    private fun previousSong() {
+        var index = currentIndexSong
+        playSongWithIndex(--index)
+    }
+
+    fun stopMusic() {
+        _Player?.stop()
+        _Player?.release()
+        _Player = null
+    }
+
+    private fun playSongWithIndex(indexSong: Int) {
+        if (indexSong in 0.._listSongResult.size) {
+            stopMusic()
+            _Player = MediaPlayer.create(this, _listSongResult[indexSong].songLocalUri)
+            _Player?.start()
+            currentIndexSong = indexSong
+        }
     }
 
     private fun createNotificationChannel() {
@@ -70,75 +144,21 @@ fun setOnclickPendingIntent(
 ) {
     val intent = Intent(context, MusicBroadCastReceiver::class.java)
     intent.action = action
-    intent.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
     val pendingIntent = PendingIntent.getBroadcast(context, 0, intent, 0)
     remoteViews.setOnClickPendingIntent(resourceId, pendingIntent)
 }
 
 class MusicBroadCastReceiver : BroadcastReceiver() {
-
-    companion object {
-        private var mPlayer: MediaPlayer? = MediaPlayer()
-        var isPlaying = false
-    }
-
     override fun onReceive(p0: Context?, p1: Intent?) {
-        mPlayer?.setOnCompletionListener { mediaPlayer ->
-            mediaPlayer.release()
-            isPlaying = false
-
-        }
+        val _intentMusicService = Intent(p0, MusicService::class.java)
         when (p1?.action) {
-            ACTION_PLAY -> playMusic(p0, p1)
-            ACTION_NEXT -> nextSong(p0)
-            ACTION_PREVIOUS -> previousSong()
-            ACTION_STOP -> stopMusic()
+            ACTION_PLAY_OR_PAUSE -> _intentMusicService.action = ACTION_PLAY_OR_PAUSE
+            ACTION_NEXT -> _intentMusicService.action = ACTION_NEXT
+            ACTION_PREVIOUS -> _intentMusicService.action = ACTION_PREVIOUS
+            ACTION_STOP -> _intentMusicService.action = ACTION_STOP
         }
+        p0?.let { startForegroundService(it, _intentMusicService) }
     }
-
-    private fun playMusic(context: Context?, intent: Intent?) {
-        if (isPlaying) {
-            mPlayer?.pause()
-            isPlaying = false
-        } else {
-            mPlayer?.stop()
-            mPlayer?.release()
-            mPlayer = null
-            intent?.let {
-                val resourceSong = it.getIntExtra(SONG_NAME_EXTRA, 0)
-                if (resourceSong != 0) {
-                    mPlayer = MediaPlayer.create(context, resourceSong)
-                    mPlayer?.start()
-                    isPlaying = true
-                }
-            }
-        }
-    }
-
-    fun nextSong(context: Context?) {
-    }
-
-    fun previousSong() {
-        creatDataSoure()
-    }
-
-    fun stopMusic() {
-        mPlayer?.stop()
-        mPlayer?.release()
-        mPlayer = null
-    }
-
-    fun creatDataSoure() {
-        val url = "https://zingmp3.vn/bai-hat/Song-Gio-Jack-K-ICM/ZWAEIUUB.html"
-        val mediaPlayer: MediaPlayer? = MediaPlayer().apply {
-            setAudioStreamType(AudioManager.STREAM_MUSIC)
-            setDataSource(url)
-            prepareAsync()
-        }
-        mediaPlayer?.setOnPreparedListener { mediaPlayer ->
-            mediaPlayer.start()
-        }
-    }
-
 }
+
 
