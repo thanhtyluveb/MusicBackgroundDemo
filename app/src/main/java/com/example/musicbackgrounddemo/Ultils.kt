@@ -7,3 +7,6 @@ const val ACTION_NEXT = "control.music.next"
 const val ACTION_STOP = "control.music.stop"
 const val SONG_INDEX_EXTRA = "song_index_extra"
 const val LIST_SONGS_EXTRA = "list_songs_extra"
+const val SEEK_BAR_EXTRA = "seek_bar_extra"
+const val ACTION_SEEK_BAR_CHANGE = "action.seek.bar.change"
+

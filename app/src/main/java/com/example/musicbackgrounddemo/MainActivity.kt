@@ -4,7 +4,10 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.View
-import android.view.animation.*
+import android.view.animation.AlphaAnimation
+import android.view.animation.Animation
+import android.view.animation.LinearInterpolator
+import android.view.animation.RotateAnimation
 import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
@@ -17,50 +20,64 @@ import kotlinx.android.synthetic.main.notif_music_control.*
 class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     companion object {
-        var _isPlayingLiveData: MutableLiveData<Boolean> = MutableLiveData()
-        var _currentNameSongLivedata: MutableLiveData<String> = MutableLiveData()
-        var _currentPositonSeekbar: MutableLiveData<Int> = MutableLiveData()
-        var _duration: MutableLiveData<Int> = MutableLiveData()
+        var IsPlayingLiveData: MutableLiveData<Boolean> = MutableLiveData()
+        var CurrentNameSongLiveData: MutableLiveData<String> = MutableLiveData()
+        var CurrentPositionSeekBarLiveData: MutableLiveData<Int> = MutableLiveData()
+        var DurationLiveData: MutableLiveData<Int> = MutableLiveData()
     }
 
     private var _intentMusicService: Intent? = null
     private var _musicAdapter: AdapterMusic = AdapterMusic(this)
-    private var _isPlaying = false
     private var _listSongs: ArrayList<SongModel> = ArrayList()
-    private var _currentIndexSong = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        _intentMusicService = Intent(this, MusicService::class.java)
+        initOnclickListener()
+        initRecycleView()
+        startMusicService()
+        imgSong.animation = animationImgSong
+        animationImgSong.start()
+        tvSongName.animation = animationTextBlink
+        animationTextBlink.start()
+        initObserveMusicService()
+    }
+
+    private fun initOnclickListener() {
         btnPlay.setOnClickListener(this)
         btnNext.setOnClickListener(this)
         btnPrevious.setOnClickListener(this)
         btnStop.setOnClickListener(this)
-        _intentMusicService = Intent(this, MusicService::class.java)
-        initRecycleView()
-        initMusicService()
-        imgSong.animation = animationImgSong
-        animationImgSong.start()
-        tvNameSong.animation = animationTextBlink
-        animationTextBlink.start()
-        _isPlayingLiveData.observe(this, Observer {
-            _isPlaying = it
-            updateControlBtn()
-        })
-        _currentNameSongLivedata.observe(this, Observer {
-            tvNameSong.text = it
-        })
-        _currentPositonSeekbar.observe(this, Observer {
-            seekBar.progress = it
-        })
-        _duration.observe(this, Observer {
-            seekBar.max = it
-        })
+        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
+            }
 
+            override fun onStartTrackingTouch(p0: SeekBar?) {
+                onClick(btnPlay)
+            }
 
+            override fun onStopTrackingTouch(p0: SeekBar?) {
+                _intentMusicService?.action = ACTION_SEEK_BAR_CHANGE
+                _intentMusicService?.putExtra(SEEK_BAR_EXTRA, p0?.progress)
+                startMusicService()
+            }
+        })
     }
 
-    private fun updateControlBtn() {
-        btnPlay.setImageResource(if (_isPlaying) R.drawable.ic_pause else R.drawable.ic_play)
+    private fun initObserveMusicService() {
+        IsPlayingLiveData.observe(this, Observer {
+            btnPlay.setImageResource(if (it) R.drawable.ic_pause else R.drawable.ic_play)
+        })
+        CurrentNameSongLiveData.observe(this, Observer {
+            tvSongName.text = it
+        })
+        CurrentPositionSeekBarLiveData.observe(this, Observer {
+            seekBar.progress = it
+        })
+        DurationLiveData.observe(this, Observer {
+            seekBar.max = it
+        })
     }
 
     private val animationImgSong: Animation
@@ -122,7 +139,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         recyclerViewMusic.layoutManager = LinearLayoutManager(this)
     }
 
-    private fun initMusicService() {
+    private fun startMusicService() {
         _intentMusicService?.putParcelableArrayListExtra(LIST_SONGS_EXTRA, _listSongs)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(_intentMusicService)
@@ -134,30 +151,25 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     override fun onClick(view: View) {
         when (view) {
             btnPlay -> {
-                _isPlaying = !_isPlaying
                 _intentMusicService?.action = ACTION_PLAY_OR_PAUSE
-                initMusicService()
             }
             btnNext -> {
                 _intentMusicService?.action = ACTION_NEXT
-                initMusicService()
             }
             btnPrevious -> {
                 _intentMusicService?.action = ACTION_PREVIOUS
-                initMusicService()
             }
             btnStop -> {
-                _isPlaying = false
-                stopService(Intent(this, MusicService::class.java))
+                IsPlayingLiveData.value = false
+                _intentMusicService?.action = ACTION_STOP
             }
         }
-        _currentIndexSong = MusicService._currentIndexSong
-        updateControlBtn()
+        startMusicService()
     }
 
     override fun onDestroy() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            if (!_isPlaying) {
+            if (IsPlayingLiveData.value == false) {
                 stopService(Intent(this, MusicService::class.java))
             }
         } else {
@@ -165,10 +177,5 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         }
         super.onDestroy()
     }
-
-    override fun onResume() {
-        super.onResume()
-    }
-
 }
 

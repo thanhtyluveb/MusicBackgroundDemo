@@ -1,6 +1,9 @@
 package com.example.musicbackgrounddemo
 
-import android.app.*
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -17,14 +20,14 @@ import androidx.core.content.ContextCompat.startForegroundService
 open class MusicService : Service() {
     private var _percentSongLength = 0
     private var _listSongResult: ArrayList<SongModel> = ArrayList()
-    private var _player: MediaPlayer? = MediaPlayer()
+    private var _player: MediaPlayer? = null
     private var _notificationLayout: RemoteViews? = null
     private var _pendingIntentToMainActivity: PendingIntent? = null
     private var _notificationBuilder: NotificationCompat.Builder? = null
 
     companion object {
-        var _isPlaying = false
-        var _currentIndexSong = 0
+        var IsPlaying = false
+        var CurrentIndexSong = 0
         const val CHANNEL_ID = "ForegroundServiceChannel"
     }
 
@@ -37,12 +40,15 @@ open class MusicService : Service() {
         setOnclickPendingIntent(this, ACTION_PREVIOUS, _notificationLayout!!, R.id.btnPrevious)
         setOnclickPendingIntent(this, ACTION_NEXT, _notificationLayout!!, R.id.btnNext)
         setOnclickPendingIntent(this, ACTION_STOP, _notificationLayout!!, R.id.btnStop)
+
         val intent = Intent(this, MainActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
         _pendingIntentToMainActivity = PendingIntent.getActivity(this, 0, intent, 0)
+
         _player?.setOnCompletionListener {
             nextSong()
         }
+
         _notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(getString(R.string.app_name))
@@ -54,50 +60,35 @@ open class MusicService : Service() {
     }
 
     private fun updateSeekBar() {
-        _player?.let {
-            if (_isPlaying) {
-                Handler().postDelayed({
-                    updateSeekBar()
-                    MainActivity._currentPositonSeekbar.value = it.currentPosition
-                }, 100)
-            }
+        if (_player?.isPlaying == true) {
+            Handler().postDelayed({
+                MainActivity.CurrentPositionSeekBarLiveData.value =
+                    _player?.currentPosition ?: 0
+                updateSeekBar()
+            }, 100)
+        } else {
+            return
         }
-    }
-
-    override fun onLowMemory() {
-        stopSelf()
-        super.onLowMemory()
-    }
-
-    override fun onDestroy() {
-        stopMusic()
-        super.onDestroy()
-    }
-
-    override fun onBind(p0: Intent?): IBinder? {
-        return null
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         _listSongResult = intent.getParcelableArrayListExtra(LIST_SONGS_EXTRA) ?: _listSongResult
-        _currentIndexSong = intent.getIntExtra(SONG_INDEX_EXTRA, _currentIndexSong)
+        CurrentIndexSong = intent.getIntExtra(SONG_INDEX_EXTRA, CurrentIndexSong)
         checkActionIntent(intent)
-        initNotification()
-        MainActivity._isPlayingLiveData.value = _isPlaying
+        if (intent.action != ACTION_STOP) {
+            initNotification()
+        }
         return START_STICKY
     }
 
     private fun initNotification() {
         _notificationLayout?.setImageViewResource(
             R.id.btnPlay,
-            if (_isPlaying) R.drawable.ic_pause else R.drawable.ic_play
+            if (IsPlaying) R.drawable.ic_pause else R.drawable.ic_play
         )
-        val nameSong = _listSongResult[_currentIndexSong].nameSong
-        _notificationLayout?.setTextViewText(
-            R.id.tvNameSong,
-            nameSong
-        )
-        MainActivity._currentNameSongLivedata.value = nameSong
+        val nameSong = _listSongResult[CurrentIndexSong].nameSong
+        _notificationLayout?.setTextViewText(R.id.tvSongName, nameSong)
+        MainActivity.CurrentNameSongLiveData.value = nameSong
         _notificationBuilder?.setContent(_notificationLayout)
         with(NotificationManagerCompat.from(this)) {
             _notificationBuilder?.build()?.let { notify(1, it) }
@@ -114,39 +105,56 @@ open class MusicService : Service() {
                 stopSelf()
             }
             ACTION_NEW_PLAY -> playNewSong()
+            ACTION_SEEK_BAR_CHANGE -> setSeekBar(intent)
         }
+        MainActivity.IsPlayingLiveData.value = _player?.isPlaying ?: false
+    }
+
+    private fun setSeekBar(intent: Intent) {
+        if (_player != null) {
+            val currentPosition = intent.getIntExtra(SEEK_BAR_EXTRA, 0)
+            _percentSongLength = currentPosition
+            _player!!.seekTo(currentPosition)
+            _player!!.start()
+        } else {
+            _percentSongLength = 0
+        }
+        updateSeekBar()
     }
 
     private fun playNewSong() {
-        playSongWithIndex(_currentIndexSong)
+        playSongWithIndex(CurrentIndexSong)
     }
 
     private fun playOrPause() {
-        _player?.let { media ->
-            if (media.isPlaying) {
-                media.pause()
-                _isPlaying = false
-                _percentSongLength = media.currentPosition
+        if (_player != null) {
+            if (_player!!.isPlaying) {
+                _player!!.pause()
+                IsPlaying = false
+                _percentSongLength = _player!!.currentPosition
             } else {
-                _isPlaying = true
-                media.seekTo(_percentSongLength)
-                media.start()
+                IsPlaying = true
+                _player!!.seekTo(_percentSongLength)
+                _player!!.start()
             }
+            updateSeekBar()
+        } else {
+            playNewSong()
         }
     }
 
     private fun nextSong() {
-        var index = _currentIndexSong
+        var index = CurrentIndexSong
         playSongWithIndex(++index)
     }
 
     private fun previousSong() {
-        var index = _currentIndexSong
+        var index = CurrentIndexSong
         playSongWithIndex(--index)
     }
 
     private fun stopMusic() {
-        _isPlaying = false
+        IsPlaying = false
         _player?.stop()
         _player?.release()
         _player = null
@@ -157,9 +165,9 @@ open class MusicService : Service() {
             stopMusic()
             _player = MediaPlayer.create(this, _listSongResult[indexSong].songLocalUri)
             _player?.start()
-            _currentIndexSong = indexSong
-            _isPlaying = true
-            MainActivity._duration.value = _player?.duration
+            CurrentIndexSong = indexSong
+            IsPlaying = true
+            MainActivity.DurationLiveData.value = _player?.duration
             updateSeekBar()
         }
     }
@@ -176,21 +184,26 @@ open class MusicService : Service() {
             manager!!.createNotificationChannel(serviceChannel)
         }
     }
+
+    override fun onBind(p0: Intent?): IBinder? {
+        return null
+    }
+
+    private fun setOnclickPendingIntent(
+        context: Context?,
+        action: String,
+        remoteViews: RemoteViews,
+        resourceId: Int
+    ) {
+        val intent = Intent(context, MusicBroadCastController::class.java)
+        intent.action = action
+        val pendingIntent = PendingIntent.getBroadcast(context, 0, intent, 0)
+        remoteViews.setOnClickPendingIntent(resourceId, pendingIntent)
+    }
 }
 
-fun setOnclickPendingIntent(
-    context: Context?,
-    action: String,
-    remoteViews: RemoteViews,
-    resourceId: Int
-) {
-    val intent = Intent(context, MusicBroadCastReceiver::class.java)
-    intent.action = action
-    val pendingIntent = PendingIntent.getBroadcast(context, 0, intent, 0)
-    remoteViews.setOnClickPendingIntent(resourceId, pendingIntent)
-}
 
-class MusicBroadCastReceiver : BroadcastReceiver() {
+class MusicBroadCastController : BroadcastReceiver() {
     override fun onReceive(p0: Context?, p1: Intent?) {
         val intentMusicService = Intent(p0, MusicService::class.java)
         when (p1?.action) {

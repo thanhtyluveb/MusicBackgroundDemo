@@ -22,7 +22,7 @@
             android:name=".MusicService"
             android:enabled="true"
             android:exported="true" />
-        <receiver android:name=".MusicBroadCastReceiver">
+        <receiver android:name=".MusicBroadCastController">
             <intent-filter>
                 <action android:name="control.music.play" />
             </intent-filter>
