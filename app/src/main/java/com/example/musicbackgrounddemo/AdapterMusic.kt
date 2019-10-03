@@ -26,18 +26,18 @@ class AdapterMusic(var context: Context) : RecyclerView.Adapter<AdapterMusic.Mus
     }
 
     override fun onBindViewHolder(holder: MusicViewHolder, position: Int) {
-        val _intentMusicService = Intent(context, MusicService::class.java)
+        val intentMusicService = Intent(context, MusicService::class.java)
         val itemSong = listSongs[position]
         holder.itemView.apply {
-            this.tvSongName.text = itemSong.nameSong
-            this.tvSongAuthor.text = itemSong.authorSong
+            this.tvSongNameItem.text = itemSong.nameSong
+            this.tvSongAuthorItem.text = itemSong.authorSong
         }.setOnClickListener {
-            _intentMusicService.action = ACTION_NEW_PLAY
-            _intentMusicService.putExtra(SONG_INDEX_EXTRA, position)
+            intentMusicService.action = ACTION_NEW_PLAY
+            intentMusicService.putExtra(SONG_INDEX_EXTRA, position)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(_intentMusicService)
+                context.startForegroundService(intentMusicService)
             }else{
-                context.startService(_intentMusicService)
+                context.startService(intentMusicService)
             }
         }
     }

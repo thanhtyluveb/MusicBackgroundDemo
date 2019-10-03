@@ -1,58 +1,77 @@
 package com.example.musicbackgrounddemo
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.app.Service
+import android.app.*
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.media.MediaPlayer
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat.startForegroundService
 
 
 open class MusicService : Service() {
-    private var percentSongLengh = 0
-    var currentIndexSong = 0
+    private var _percentSongLength = 0
     private var _listSongResult: ArrayList<SongModel> = ArrayList()
-    private var _Player: MediaPlayer? = MediaPlayer()
-    private val CHANNEL_ID = "ForegroundServiceChannel"
+    private var _player: MediaPlayer? = MediaPlayer()
+    private var _notificationLayout: RemoteViews? = null
+    private var _pendingIntentToMainActivity: PendingIntent? = null
+    private var _notificationBuilder: NotificationCompat.Builder? = null
+
+    companion object {
+        var _isPlaying = false
+        var _currentIndexSong = 0
+        const val CHANNEL_ID = "ForegroundServiceChannel"
+    }
 
     override fun onCreate() {
+        super.onCreate()
         createNotificationChannel()
-        val notificationLayout = RemoteViews(packageName, R.layout.notif_music_control)
-        val notificationIntent = Intent(this, MainActivity::class.java)
-        notificationIntent.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-        val pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0)
+        _notificationLayout = RemoteViews(packageName, R.layout.notif_music_control)
 
-        setOnclickPendingIntent(this, ACTION_PLAY_OR_PAUSE, notificationLayout, R.id.btnPlay)
-        setOnclickPendingIntent(this, ACTION_PREVIOUS, notificationLayout, R.id.btnPrevious)
-        setOnclickPendingIntent(this, ACTION_NEXT, notificationLayout, R.id.btnNext)
-        setOnclickPendingIntent(this, ACTION_STOP, notificationLayout, R.id.btnStop)
-
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.app_name))
-            .setContentText(getString(R.string.app_name))
-            .setContent(notificationLayout)
-            .setSmallIcon(R.drawable.zing_mp3)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .build()
-        startForeground(1, notification)
-
-        _Player?.setOnCompletionListener {
+        setOnclickPendingIntent(this, ACTION_PLAY_OR_PAUSE, _notificationLayout!!, R.id.btnPlay)
+        setOnclickPendingIntent(this, ACTION_PREVIOUS, _notificationLayout!!, R.id.btnPrevious)
+        setOnclickPendingIntent(this, ACTION_NEXT, _notificationLayout!!, R.id.btnNext)
+        setOnclickPendingIntent(this, ACTION_STOP, _notificationLayout!!, R.id.btnStop)
+        val intent = Intent(this, MainActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        _pendingIntentToMainActivity = PendingIntent.getActivity(this, 0, intent, 0)
+        _player?.setOnCompletionListener {
             nextSong()
         }
-        super.onCreate()
+        _notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText(getString(R.string.app_name))
+            .setContent(_notificationLayout)
+            .setSmallIcon(R.drawable.zing_mp3)
+            .setContentIntent(_pendingIntentToMainActivity)
+            .setAutoCancel(true)
+        startForeground(1, _notificationBuilder?.build())
+    }
+
+    private fun updateSeekBar() {
+        _player?.let {
+            if (_isPlaying) {
+                Handler().postDelayed({
+                    updateSeekBar()
+                    MainActivity._currentPositonSeekbar.value = it.currentPosition
+                }, 100)
+            }
+        }
     }
 
     override fun onLowMemory() {
         stopSelf()
         super.onLowMemory()
+    }
+
+    override fun onDestroy() {
+        stopMusic()
+        super.onDestroy()
     }
 
     override fun onBind(p0: Intent?): IBinder? {
@@ -61,14 +80,33 @@ open class MusicService : Service() {
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         _listSongResult = intent.getParcelableArrayListExtra(LIST_SONGS_EXTRA) ?: _listSongResult
-        currentIndexSong = intent.getIntExtra(SONG_INDEX_EXTRA, currentIndexSong)
+        _currentIndexSong = intent.getIntExtra(SONG_INDEX_EXTRA, _currentIndexSong)
         checkActionIntent(intent)
+        initNotification()
+        MainActivity._isPlayingLiveData.value = _isPlaying
         return START_STICKY
+    }
+
+    private fun initNotification() {
+        _notificationLayout?.setImageViewResource(
+            R.id.btnPlay,
+            if (_isPlaying) R.drawable.ic_pause else R.drawable.ic_play
+        )
+        val nameSong = _listSongResult[_currentIndexSong].nameSong
+        _notificationLayout?.setTextViewText(
+            R.id.tvNameSong,
+            nameSong
+        )
+        MainActivity._currentNameSongLivedata.value = nameSong
+        _notificationBuilder?.setContent(_notificationLayout)
+        with(NotificationManagerCompat.from(this)) {
+            _notificationBuilder?.build()?.let { notify(1, it) }
+        }
     }
 
     private fun checkActionIntent(intent: Intent) {
         when (intent.action) {
-            ACTION_PLAY_OR_PAUSE -> playOrPause(intent)
+            ACTION_PLAY_OR_PAUSE -> playOrPause()
             ACTION_NEXT -> nextSong()
             ACTION_PREVIOUS -> previousSong()
             ACTION_STOP -> {
@@ -80,45 +118,49 @@ open class MusicService : Service() {
     }
 
     private fun playNewSong() {
-        playSongWithIndex(currentIndexSong)
+        playSongWithIndex(_currentIndexSong)
     }
 
-    private fun playOrPause(intent: Intent) {
-        _Player?.let { media ->
+    private fun playOrPause() {
+        _player?.let { media ->
             if (media.isPlaying) {
                 media.pause()
-                percentSongLengh = media.currentPosition
+                _isPlaying = false
+                _percentSongLength = media.currentPosition
             } else {
-                intent?.let {
-                    media.seekTo(percentSongLengh)
-                    media.start()
-                }
+                _isPlaying = true
+                media.seekTo(_percentSongLength)
+                media.start()
             }
         }
     }
 
     private fun nextSong() {
-        var index = currentIndexSong
+        var index = _currentIndexSong
         playSongWithIndex(++index)
     }
 
     private fun previousSong() {
-        var index = currentIndexSong
+        var index = _currentIndexSong
         playSongWithIndex(--index)
     }
 
-    fun stopMusic() {
-        _Player?.stop()
-        _Player?.release()
-        _Player = null
+    private fun stopMusic() {
+        _isPlaying = false
+        _player?.stop()
+        _player?.release()
+        _player = null
     }
 
     private fun playSongWithIndex(indexSong: Int) {
         if (indexSong in 0.._listSongResult.size) {
             stopMusic()
-            _Player = MediaPlayer.create(this, _listSongResult[indexSong].songLocalUri)
-            _Player?.start()
-            currentIndexSong = indexSong
+            _player = MediaPlayer.create(this, _listSongResult[indexSong].songLocalUri)
+            _player?.start()
+            _currentIndexSong = indexSong
+            _isPlaying = true
+            MainActivity._duration.value = _player?.duration
+            updateSeekBar()
         }
     }
 
@@ -150,14 +192,14 @@ fun setOnclickPendingIntent(
 
 class MusicBroadCastReceiver : BroadcastReceiver() {
     override fun onReceive(p0: Context?, p1: Intent?) {
-        val _intentMusicService = Intent(p0, MusicService::class.java)
+        val intentMusicService = Intent(p0, MusicService::class.java)
         when (p1?.action) {
-            ACTION_PLAY_OR_PAUSE -> _intentMusicService.action = ACTION_PLAY_OR_PAUSE
-            ACTION_NEXT -> _intentMusicService.action = ACTION_NEXT
-            ACTION_PREVIOUS -> _intentMusicService.action = ACTION_PREVIOUS
-            ACTION_STOP -> _intentMusicService.action = ACTION_STOP
+            ACTION_PLAY_OR_PAUSE -> intentMusicService.action = ACTION_PLAY_OR_PAUSE
+            ACTION_NEXT -> intentMusicService.action = ACTION_NEXT
+            ACTION_PREVIOUS -> intentMusicService.action = ACTION_PREVIOUS
+            ACTION_STOP -> intentMusicService.action = ACTION_STOP
         }
-        p0?.let { startForegroundService(it, _intentMusicService) }
+        p0?.let { startForegroundService(it, intentMusicService) }
     }
 }
 

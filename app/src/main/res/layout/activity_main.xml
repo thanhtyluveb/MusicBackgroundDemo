@@ -11,17 +11,19 @@
         android:id="@+id/recyclerViewMusic"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:background="#020000"
         app:layout_constraintBottom_toTopOf="@id/cvController"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.0"
         tools:listitem="@layout/item_songs" />
 
     <androidx.cardview.widget.CardView
         android:id="@+id/cvController"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardCornerRadius="10dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
@@ -29,14 +31,8 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#A3FFEB3B"
+            android:background="#000000"
             android:orientation="vertical">
-
-            <SeekBar
-                android:id="@+id/seekBar"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_weight="50" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -48,10 +44,23 @@
                     android:layout_height="100dp"
                     android:src="@drawable/zing_mp3" />
 
-                <include
-                    layout="@layout/notif_music_control"
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <SeekBar
+                        android:clickable="false"
+                        android:id="@+id/seekBar"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <include
+                        layout="@layout/notif_music_control"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+                </LinearLayout>
+
             </LinearLayout>
 
         </LinearLayout>

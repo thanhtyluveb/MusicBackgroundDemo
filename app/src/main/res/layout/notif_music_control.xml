@@ -1,72 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android">
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#020000"
+    android:gravity="center"
+    android:orientation="vertical">
 
-    <data>
-        <variable
-            name="viewModel"
-            type="com.example.musicbackgrounddemo.MusicViewModel" />
-    </data>
-
-    <LinearLayout
+    <TextView
+        android:id="@+id/tvNameSong"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:orientation="vertical">
+        android:text="this is song name"
+        android:textColor="#FFFFFFFF"
+        android:textSize="20sp" />
 
-        <TextView
-            android:layout_width="match_parent"
+    <LinearLayout
+        android:animateLayoutChanges="true"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center">
+
+        <ImageButton
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="this is song name"
-            android:textColor="@color/colorAccent"
-            android:textSize="20sp" />
+            android:backgroundTint="@android:color/transparent"
+            android:src="@drawable/ic_equalizer" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <ImageButton
+            android:id="@+id/btnPrevious"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="center">
+            android:backgroundTint="@android:color/transparent"
+            android:src="@drawable/ic_previous" />
 
-            <ImageButton
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:backgroundTint="@android:color/transparent"
-                android:src="@drawable/ic_equalizer" />
+        <ImageButton
+            android:id="@+id/btnPlay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@android:color/transparent"
+            android:src="@drawable/ic_play" />
 
-            <ImageButton
-                android:id="@+id/btnPrevious"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:backgroundTint="@android:color/transparent"
-                android:src="@drawable/ic_previous" />
+        <ImageButton
+            android:id="@+id/btnNext"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@android:color/transparent"
+            android:src="@drawable/ic_next" />
 
-            <ImageButton
-                android:id="@+id/btnPlay"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:backgroundTint="@android:color/transparent"
-                android:src="@drawable/ic_play" />
+        <ImageButton
+            android:id="@+id/btnStop"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@android:color/transparent"
+            android:src="@drawable/ic_stop"
+            android:visibility="visible" />
 
-            <ImageButton
-                android:id="@+id/btnNext"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:backgroundTint="@android:color/transparent"
-                android:src="@drawable/ic_next" />
-
-            <ImageButton
-                android:id="@+id/btnStop"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:backgroundTint="@android:color/transparent"
-                android:src="@drawable/ic_stop"
-                android:visibility="visible" />
-
-            <ImageButton
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:backgroundTint="@android:color/transparent"
-                android:src="@drawable/ic_replay" />
-        </LinearLayout>
-
+        <ImageButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@android:color/transparent"
+            android:src="@drawable/ic_replay" />
     </LinearLayout>
-</layout>
+
+</LinearLayout>
