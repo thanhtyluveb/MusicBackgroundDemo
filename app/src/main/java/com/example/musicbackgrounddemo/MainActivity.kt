@@ -74,6 +74,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         })
         CurrentNameSongLiveData.observe(this, Observer {
             tvSongName.text = it
+            recyclerViewMusic.scrollToPosition(_listSongs.map { nameSong -> nameSong.nameSong }.indexOf(it))
         })
         CurrentPositionSeekBarLiveData.observe(this, Observer {
             seekBar.progress = it

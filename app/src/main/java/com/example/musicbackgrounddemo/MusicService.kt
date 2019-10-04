@@ -178,6 +178,7 @@ open class MusicService : Service(), MediaPlayer.OnCompletionListener {
             MainActivity.DurationLiveData.value = _player?.duration
             updateSeekBar()
             _player?.setOnCompletionListener(this)
+            initNotification()
         } else {
             stopMusic()
         }

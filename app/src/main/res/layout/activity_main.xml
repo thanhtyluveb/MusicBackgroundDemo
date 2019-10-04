@@ -12,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:background="#020000"
-        app:layout_constraintBottom_toTopOf="@id/cvController"
+        app:layout_constraintBottom_toTopOf="@id/layoutController"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
@@ -20,81 +20,75 @@
         app:layout_constraintVertical_bias="0.0"
         tools:listitem="@layout/item_songs" />
 
-    <androidx.cardview.widget.CardView
-        android:id="@+id/cvController"
+    <LinearLayout
+        android:id="@+id/layoutController"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="#000000"
+        android:orientation="vertical"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="#000000"
-            android:orientation="vertical">
+            android:layout_height="wrap_content">
+
+            <ImageView
+                android:id="@+id/imgSong"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:src="@drawable/zing_mp3" />
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <ImageView
-                    android:id="@+id/imgSong"
-                    android:layout_width="100dp"
-                    android:layout_height="100dp"
-                    android:src="@drawable/zing_mp3" />
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:orientation="horizontal">
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
+                    <TextView
+                        android:id="@+id/tvTimeCurrent"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal">
+                        android:gravity="center"
+                        android:paddingLeft="2dp"
+                        android:paddingRight="2dp"
+                        android:text="20:20"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12dp" />
 
-                        <TextView
-                            android:id="@+id/tvTimeCurrent"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:gravity="center"
-                            android:paddingLeft="2dp"
-                            android:paddingRight="2dp"
-                            android:text="20:20"
-                            android:textColor="#FFFFFF"
-                            android:textSize="12dp" />
+                    <SeekBar
+                        android:id="@+id/seekBar"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:clickable="false"
+                        android:secondaryProgress="100" />
 
-                        <SeekBar
-                            android:id="@+id/seekBar"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:clickable="false"
-                            android:secondaryProgress="100" />
-
-                        <TextView
-                            android:id="@+id/tvTimeEnd"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:gravity="center"
-                            android:paddingLeft="2dp"
-                            android:paddingRight="2dp"
-                            android:text="20:20"
-                            android:textColor="#FFFFFF"
-                            android:textSize="12dp" />
-                    </LinearLayout>
-
-                    <include
-                        layout="@layout/notif_music_control"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent" />
+                    <TextView
+                        android:id="@+id/tvTimeEnd"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:paddingLeft="2dp"
+                        android:paddingRight="2dp"
+                        android:text="20:20"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12dp" />
                 </LinearLayout>
 
+                <include
+                    layout="@layout/notif_music_control"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
             </LinearLayout>
 
         </LinearLayout>
 
-    </androidx.cardview.widget.CardView>
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
