@@ -11,13 +11,21 @@ import android.media.MediaPlayer
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
+import android.util.Log
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat.startForegroundService
+import android.R.string.cancel
+import java.util.*
+import kotlin.collections.ArrayList
 
 
-open class MusicService : Service() {
+open class MusicService : Service(), MediaPlayer.OnCompletionListener {
+    override fun onCompletion(p0: MediaPlayer?) {
+        nextSong()
+    }
+
     private var _percentSongLength = 0
     private var _listSongResult: ArrayList<SongModel> = ArrayList()
     private var _player: MediaPlayer? = null
@@ -45,16 +53,13 @@ open class MusicService : Service() {
         intent.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
         _pendingIntentToMainActivity = PendingIntent.getActivity(this, 0, intent, 0)
 
-        _player?.setOnCompletionListener {
-            nextSong()
-        }
-
         _notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(getString(R.string.app_name))
             .setContent(_notificationLayout)
             .setSmallIcon(R.drawable.zing_mp3)
             .setContentIntent(_pendingIntentToMainActivity)
+            .setPriority(1)
             .setAutoCancel(true)
         startForeground(1, _notificationBuilder?.build())
     }
@@ -127,19 +132,22 @@ open class MusicService : Service() {
     }
 
     private fun playOrPause() {
-        if (_player != null) {
-            if (_player!!.isPlaying) {
-                _player!!.pause()
-                IsPlaying = false
-                _percentSongLength = _player!!.currentPosition
-            } else {
-                IsPlaying = true
-                _player!!.seekTo(_percentSongLength)
-                _player!!.start()
+        when {
+            _player != null -> {
+                if (_player!!.isPlaying) {
+                    _player!!.pause()
+                    IsPlaying = false
+                    _percentSongLength = _player!!.currentPosition
+                } else {
+                    IsPlaying = true
+                    _player!!.seekTo(_percentSongLength)
+                    _player!!.start()
+                }
+                updateSeekBar()
             }
-            updateSeekBar()
-        } else {
-            playNewSong()
+            else -> {
+                playNewSong()
+            }
         }
     }
 
@@ -161,7 +169,7 @@ open class MusicService : Service() {
     }
 
     private fun playSongWithIndex(indexSong: Int) {
-        if (indexSong in 0.._listSongResult.size) {
+        if (indexSong in 0 until _listSongResult.size) {
             stopMusic()
             _player = MediaPlayer.create(this, _listSongResult[indexSong].songLocalUri)
             _player?.start()
@@ -169,7 +177,24 @@ open class MusicService : Service() {
             IsPlaying = true
             MainActivity.DurationLiveData.value = _player?.duration
             updateSeekBar()
+            _player?.setOnCompletionListener(this)
+        } else {
+            stopMusic()
         }
+    }
+
+    fun getTimeSong() {
+        val timer = Timer()
+        timer.scheduleAtFixedRate(object : TimerTask() {
+            override fun run() {
+                if (IsPlaying) {
+                    Log.d("aaaa", _player?.currentPosition.toString())
+                } else {
+                    timer.cancel()
+                    timer.purge()
+                }
+            }
+        }, 0, 1000)
     }
 
     private fun createNotificationChannel() {

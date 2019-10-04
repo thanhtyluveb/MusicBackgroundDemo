@@ -3,6 +3,7 @@ package com.example.musicbackgrounddemo
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
@@ -37,11 +38,13 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         initOnclickListener()
         initRecycleView()
         startMusicService()
-        imgSong.animation = animationImgSong
-        animationImgSong.start()
-        tvSongName.animation = animationTextBlink
-        animationTextBlink.start()
         initObserveMusicService()
+        initAnimation()
+    }
+
+    private fun initAnimation() {
+        imgSong.animation = animationImgSong
+        tvSongName.animation = animationTextBlink
     }
 
     private fun initOnclickListener() {
@@ -107,22 +110,22 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         }
 
     private fun initRecycleView() {
-        val songModel = SongModel("song_gio", "Thanh tyluven", R.raw.song_gio)
-        val songMode2 = SongModel("buoc_qua_doi_nhau", "Thanh tyluven", R.raw.buoc_qua_doi_nhau)
+        val songModel = SongModel("song_gio", "Jack - KICM", R.raw.song_gio)
+        val songMode2 = SongModel("buoc_qua_doi_nhau", "Le Bao Binh", R.raw.buoc_qua_doi_nhau)
         val songMode3 =
-            SongModel("Nco_tat_ca_nhung_thieu_em", "Thanh tyluven", R.raw.co_tat_ca_nhung_thieu_em)
-        val songMode4 = SongModel("het_thuong_can_nho", "Thanh tyluven", R.raw.het_thuong_can_nho)
+            SongModel("co_tat_ca_nhung_thieu_em", "Erik", R.raw.co_tat_ca_nhung_thieu_em)
+        val songMode4 = SongModel("het_thuong_can_nho", "Duc Phuc", R.raw.het_thuong_can_nho)
         val songMode5 =
-            SongModel("la_ban_khong_the_yeu", "Thanh tyluven", R.raw.la_ban_khong_the_yeu)
-        val songMode6 = SongModel("loi_yeu_ngay_dai", "Thanh tyluven", R.raw.loi_yeu_ngay_dai)
+            SongModel("la_ban_khong_the_yeu", "Unknown", R.raw.la_ban_khong_the_yeu)
+        val songMode6 = SongModel("loi_yeu_ngay_dai", "Unknown", R.raw.loi_yeu_ngay_dai)
         val songMode7 =
             SongModel(
                 "nuoc_mat_lau_bang_tinh_yeu",
-                "Thanh tyluven",
+                "Unknown",
                 R.raw.nuoc_mat_lau_bang_tinh_yeu
             )
-        val songMode8 = SongModel("the_tu", "Thanh tyluven", R.raw.the_tu)
-        val songMode9 = SongModel("tuong_quan", "Thanh tyluven", R.raw.tuong_quan)
+        val songMode8 = SongModel("the_tu", "Minh Vuong", R.raw.the_tu)
+        val songMode9 = SongModel("tuong_quan", "Minh Vuong", R.raw.tuong_quan)
         _listSongs = arrayListOf(
             songModel,
             songMode2,
